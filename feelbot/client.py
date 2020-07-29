@@ -210,6 +210,7 @@ class Client(object):
         sleep: int = 30,
     ) -> Lesson:
         def _find():
+            self.login()
             self.select_studio(studio)
             lesson = find_lesson(self.driver, studio, schedule, False)
             if lesson is None:
@@ -234,6 +235,7 @@ class Client(object):
         sleep: int = 30,
     ) -> Tuple[bool, Optional[Lesson]]:
         def _reserve():
+            self.login()
             self.select_studio(studio)
             success, lesson = reserve_lesson(self.driver, studio, schedule)
             if lesson is None:
