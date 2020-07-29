@@ -218,11 +218,12 @@ class Client(object):
             return lesson
 
         if polling:
-            lesson = _find()
-            if lesson.status == Reservation.FULL:
-                time.sleep(random.randint(sleep*0.5, sleep*1.5))
-            else:
-                return lesson
+            while True:
+                lesson = _find()
+                if lesson.status == Reservation.FULL:
+                    time.sleep(random.randint(sleep*0.5, sleep*1.5))
+                else:
+                    return lesson
         else:
             return _find()
 
@@ -247,12 +248,13 @@ class Client(object):
             return success, lesson
 
         if polling:
-            success, lesson = _reserve()
-            if lesson is None:
-                return False, None
-            elif lesson.status == Reservation.FULL:
-                time.sleep(random.randint(sleep*0.5, sleep*1.5))
-            else:
-                return success, lesson
+            while True:
+                success, lesson = _reserve()
+                if lesson is None:
+                    return False, None
+                elif lesson.status == Reservation.FULL:
+                    time.sleep(random.randint(sleep*0.5, sleep*1.5))
+                else:
+                    return success, lesson
         else:
             return _reserve()
