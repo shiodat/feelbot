@@ -49,7 +49,7 @@ def _background_find_lesson(
         incoming_webhook(user_id, lesson.text(prefix='lesson information\n'))
     except Exception as e:
         logger.exception(f'{e}')
-        incoming_webhook(user_id, f'something wrong: {e.__class__.__name__}')
+                         f'something wrong: {e.__class__.__name__}\n{e}')
 
 
 @app.post(
@@ -85,7 +85,8 @@ def _background_reserve_lesson(
         incoming_webhook(user_id, lesson.text(prefix=pref))
     except Exception as e:
         logger.exception(f'{e}')
-        incoming_webhook(user_id, f'something wrong: {e.__class__.__name__}')
+        incoming_webhook(user_id,
+                         f'something wrong: {e.__class__.__name__}\n{e}')
 
 
 def _parse_parameters(parameters):
