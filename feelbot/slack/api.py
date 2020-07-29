@@ -48,7 +48,7 @@ def _background_find_lesson(
             studio, schedule, polling=polling, sleep=sleep)
         incoming_webhook(user_id, lesson.text(prefix='lesson information\n'))
     except Exception as e:
-        logger.exception(f'{e}')
+        logger.exception(user_id,
                          f'something wrong: {e.__class__.__name__}\n{e}')
 
 
