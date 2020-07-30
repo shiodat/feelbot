@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from loguru import logger
 from pydantic import SecretStr
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
@@ -174,7 +175,9 @@ def get_driver() -> WebDriver:
     options = webdriver.ChromeOptions()
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
     driver = webdriver.Chrome(options=options)
+    driver.set_page_load_timeout(30)
     return driver
 
 
@@ -183,6 +186,12 @@ class Client(object):
     def __init__(self):
         self.driver = get_driver()
         load_dotenv(verbose=True)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, ex_type, ex_value, trace):
+        self.driver.quit()
 
     def is_login(self) -> bool:
         return is_login(self.driver)
@@ -219,7 +228,11 @@ class Client(object):
 
         if polling:
             while True:
-                lesson = _find()
+                try:
+                    lesson = _find()
+                except TimeoutException:
+                    logger.info('timeout error, retry')
+                    continue
                 if lesson.status == Reservation.FULL:
                     time.sleep(random.randint(sleep*0.5, sleep*1.5))
                 else:
@@ -249,7 +262,11 @@ class Client(object):
 
         if polling:
             while True:
-                success, lesson = _reserve()
+                try:
+                    success, lesson = _reserve()
+                except TimeoutException:
+                    logger.info('timeout error, retry')
+                    continue
                 if lesson is None:
                     return False, None
                 elif lesson.status == Reservation.FULL:

@@ -7,7 +7,6 @@ from .models import Lesson
 
 
 app = FastAPI()
-client = Client()
 
 
 @app.get('/find', response_model=Lesson)
@@ -16,7 +15,8 @@ async def find_lesson(
     schedule: datetime,
     polling: bool = False
 ):
-    lesson = client.find_lesson(studio, schedule, polling=polling)
+    with Client() as client:
+        lesson = client.find_lesson(studio, schedule, polling=polling)
     return lesson
 
 
@@ -26,6 +26,7 @@ async def reserve_lesson(
     schedule: datetime,
     polling: bool = False
 ):
-    success, lesson = client.reserve_lesson(
-        studio, schedule, polling=polling, refresh=True)
+    with Client() as client:
+        success, lesson = client.reserve_lesson(
+            studio, schedule, polling=polling, refresh=True)
     return lesson

@@ -13,7 +13,6 @@ from ..client import Client
 from ..utils import convert_datetime
 
 app = FastAPI()
-client = Client()
 load_dotenv(verbose=True)
 
 
@@ -43,13 +42,16 @@ async def find_lesson(request: Request):
 def _background_find_lesson(
     user_id, studio, schedule, polling=False, sleep=30
 ):
-    try:
-        lesson = client.find_lesson(
-            studio, schedule, polling=polling, sleep=sleep)
-        incoming_webhook(user_id, lesson.text(prefix='lesson information\n'))
-    except Exception as e:
-        logger.exception(user_id,
-                         f'something wrong: {e.__class__.__name__}\n{e}')
+    with Client() as client:
+        try:
+            lesson = client.find_lesson(
+                studio, schedule, polling=polling, sleep=sleep)
+            incoming_webhook(user_id,
+                             lesson.text(prefix='lesson information\n'))
+        except Exception as e:
+            logger.exception(f'{e}')
+            logger.exception(user_id,
+                             f'something wrong: {e.__class__.__name__}\n{e}')
 
 
 @app.post(
@@ -78,15 +80,16 @@ async def reserve_lesson(request: Request):
 def _background_reserve_lesson(
     user_id, studio, schedule, polling=False, refresh=True, sleep=30
 ):
-    try:
-        success, lesson = client.reserve_lesson(
-            studio, schedule, polling=polling, refresh=refresh, sleep=sleep)
-        pref = 'reservation success!\n' if success else 'reservation failed\n'
-        incoming_webhook(user_id, lesson.text(prefix=pref))
-    except Exception as e:
-        logger.exception(f'{e}')
-        incoming_webhook(user_id,
-                         f'something wrong: {e.__class__.__name__}\n{e}')
+    with Client() as client:
+        try:
+            success, lesson = client.reserve_lesson(
+                studio, schedule, polling=polling, refresh=refresh, sleep=sleep)
+            pref = 'reservation success!\n' if success else 'reservation failed\n'
+            incoming_webhook(user_id, lesson.text(prefix=pref))
+        except Exception as e:
+            logger.exception(f'{e}')
+            incoming_webhook(user_id,
+                             f'something wrong: {e.__class__.__name__}\n{e}')
 
 
 def _parse_parameters(parameters):
