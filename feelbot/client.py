@@ -160,14 +160,17 @@ def reserve_lesson(
     success = False
     for seat_element in driver.find_elements_by_class_name('number'):
         seat_link = seat_element.find_element_by_tag_name('a')
-        if seat_link.get_attribute('class') not in ('thickbox', ''):
+        if seat_link.get_attribute('class') == 'set':
             continue
-        seat_link.click()
-        driver.find_elements_by_class_name('coment')[1] \
+        try:
+            seat_link.click()
+            driver.find_elements_by_class_name('coment')[1] \
               .find_elements_by_tag_name('a')[1] \
               .click()
-        success = True
-        break
+            success = True
+            break
+        except Exception:
+            continue
     return success, lesson
 
 
