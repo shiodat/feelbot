@@ -106,7 +106,8 @@ def _background_reserve_lesson(
     with Client() as client:
         try:
             success, lesson = client.reserve_lesson(
-                studio, schedule, polling=polling, refresh=refresh, sleep=sleep)
+                studio, schedule, relocate=relocate,
+                polling=polling, refresh=refresh, sleep=sleep)
             pref = 'reservation success!\n' if success else 'reservation failed\n'
             incoming_webhook(user_id, lesson.text(prefix=pref))
         except Exception as e:
