@@ -12,6 +12,7 @@ from pydantic import SecretStr
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.common.alert import Alert
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.ui import WebDriverWait
@@ -146,15 +147,20 @@ def reserve_lesson(
     driver: WebDriver,
     studio: str,
     schedule: datetime,
+    relocate: bool = False
 ) -> Tuple[bool, Optional[Lesson]]:
     lesson, lesson_element =\
         find_lesson(driver, studio, schedule, return_element=True)
     if lesson is None:
         return False, None
-    if lesson.status in (Reservation.FULL, Reservation.PAST):
-        return False, lesson
-    if lesson.status == Reservation.RESERVED:
-        return True, lesson
+    if relocate:
+        if lesson.status != Reservation.RESERVED:
+            return False, lesson
+    else:
+        if lesson.status in (Reservation.FULL, Reservation.PAST):
+            return False, lesson
+        if lesson.status == Reservation.RESERVED:
+            return True, lesson
 
     lesson_element.click()
     success = False
@@ -163,6 +169,9 @@ def reserve_lesson(
         if seat_link.get_attribute('class') not in ('thickbox', ''):
             continue
         seat_link.click()
+        if relocate:
+            time.sleep(1)
+            Alert(driver).accept()
         driver.find_elements_by_class_name('coment')[1] \
               .find_elements_by_tag_name('a')[1] \
               .click()
@@ -219,6 +228,7 @@ class Client(object):
         sleep: int = 30,
     ) -> Lesson:
         def _find():
+            logger.info('finding lesson...')
             self.login()
             self.select_studio(studio)
             lesson = find_lesson(self.driver, studio, schedule, False)
@@ -244,14 +254,17 @@ class Client(object):
         self,
         studio: str,
         schedule: datetime,
+        relocate: bool = False,
         polling: bool = False,
         refresh: bool = False,
         sleep: int = 30,
     ) -> Tuple[bool, Optional[Lesson]]:
         def _reserve():
+            logger.info('reserving lesson...')
             self.login()
             self.select_studio(studio)
-            success, lesson = reserve_lesson(self.driver, studio, schedule)
+            success, lesson = reserve_lesson(
+                self.driver, studio, schedule, relocate=relocate)
             if lesson is None:
                 raise LessonNotFoundError()
             if refresh:

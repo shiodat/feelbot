@@ -67,7 +67,7 @@ async def reserve_lesson(request: Request):
     studio, schedule, polling = _parse_parameters(command.text.split())
     thread = Thread(
         target=_background_reserve_lesson,
-        args=[command.user_id, studio, schedule, polling, True],
+        args=[command.user_id, studio, schedule, False, polling, True],
         daemon=True
     )
     thread.start()
@@ -77,8 +77,31 @@ async def reserve_lesson(request: Request):
         return 'reserving...'
 
 
+@app.post(
+    '/relocate',
+    response_model=str,
+    dependencies=[Depends(verify_signature), Depends(verify_timestamp)]
+)
+async def relocate_lesson(request: Request):
+    form = await request.form()
+    command = SlackCommand(**form)
+    if command.command != '/relocate':
+        raise ValueError('endpoint does not match')
+    studio, schedule, polling = _parse_parameters(command.text.split())
+    thread = Thread(
+        target=_background_reserve_lesson,
+        args=[command.user_id, studio, schedule, True, polling, True],
+        daemon=True
+    )
+    thread.start()
+    if polling:
+        return 'relocate the lesson when it becomes vacant, please wait'
+    else:
+        return 'relocating...'
+
+
 def _background_reserve_lesson(
-    user_id, studio, schedule, polling=False, refresh=True, sleep=30
+    user_id, studio, schedule, relocate=False, polling=False, refresh=True, sleep=30
 ):
     with Client() as client:
         try:
