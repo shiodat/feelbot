@@ -17,14 +17,14 @@ load_dotenv(verbose=True)
 
 
 @app.post(
-    '/find',
+    '/find2',
     response_model=str,
     dependencies=[Depends(verify_signature), Depends(verify_timestamp)]
 )
 async def find_lesson(request: Request):
     form = await request.form()
     command = SlackCommand(**form)
-    if command.command != '/find':
+    if command.command != '/find2':
         raise ValueError('endpoint does not match')
     studio, schedule, polling = _parse_parameters(command.text.split())
     thread = Thread(
@@ -55,14 +55,14 @@ def _background_find_lesson(
 
 
 @app.post(
-    '/reserve',
+    '/reserve2',
     response_model=str,
     dependencies=[Depends(verify_signature), Depends(verify_timestamp)]
 )
 async def reserve_lesson(request: Request):
     form = await request.form()
     command = SlackCommand(**form)
-    if command.command != '/reserve':
+    if command.command != '/reserve2':
         raise ValueError('endpoint does not match')
     studio, schedule, polling = _parse_parameters(command.text.split())
     thread = Thread(
@@ -78,14 +78,14 @@ async def reserve_lesson(request: Request):
 
 
 @app.post(
-    '/relocate',
+    '/relocate2',
     response_model=str,
     dependencies=[Depends(verify_signature), Depends(verify_timestamp)]
 )
 async def relocate_lesson(request: Request):
     form = await request.form()
     command = SlackCommand(**form)
-    if command.command != '/relocate':
+    if command.command != '/relocate2':
         raise ValueError('endpoint does not match')
     studio, schedule, polling = _parse_parameters(command.text.split())
     thread = Thread(
