@@ -158,7 +158,7 @@ def reserve_lesson(
 
     lesson_element.click()
     success = False
-    for seat_element in driver.find_elements_by_class_name('number'):
+    for seat_element in driver.find_elements_by_class_name('number')[::-1]:
         seat_link = seat_element.find_element_by_tag_name('a')
         if seat_link.get_attribute('class') not in ('thickbox', ''):
             continue
