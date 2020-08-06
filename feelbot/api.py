@@ -28,7 +28,7 @@ async def reserve_lesson(
 ):
     with Client() as client:
         success, lesson = client.reserve_lesson(
-            studio, schedule, relocate=False, polling=polling, refresh=True)
+            studio, schedule, relocate=False, polling=polling)
     return lesson
 
 
@@ -40,5 +40,5 @@ async def reserve_lesson(
 ):
     with Client() as client:
         success, lesson = client.reserve_lesson(
-            studio, schedule, relocate=True, polling=polling, refresh=True)
+            studio, schedule, relocate=True, polling=polling)
     return lesson

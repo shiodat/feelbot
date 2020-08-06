@@ -228,7 +228,6 @@ class Client(object):
         sleep: int = 30,
     ) -> Lesson:
         def _find():
-            logger.info('finding lesson...')
             self.login()
             self.select_studio(studio)
             lesson = find_lesson(self.driver, studio, schedule, False)
@@ -256,18 +255,16 @@ class Client(object):
         schedule: datetime,
         relocate: bool = False,
         polling: bool = False,
-        refresh: bool = False,
         sleep: int = 30,
     ) -> Tuple[bool, Optional[Lesson]]:
         def _reserve():
-            logger.info('reserving lesson...')
             self.login()
             self.select_studio(studio)
             success, lesson = reserve_lesson(
                 self.driver, studio, schedule, relocate=relocate)
             if lesson is None:
                 raise LessonNotFoundError()
-            if refresh:
+            if success:
                 lesson = find_lesson(self.driver, studio, schedule, False)
                 if lesson is None:
                     raise LessonNotFoundError()

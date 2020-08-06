@@ -67,7 +67,7 @@ async def reserve_lesson(request: Request):
     studio, schedule, polling = _parse_parameters(command.text.split())
     thread = Thread(
         target=_background_reserve_lesson,
-        args=[command.user_id, studio, schedule, False, polling, True],
+        args=[command.user_id, studio, schedule, polling, True],
         daemon=True
     )
     thread.start()
@@ -90,7 +90,7 @@ async def relocate_lesson(request: Request):
     studio, schedule, polling = _parse_parameters(command.text.split())
     thread = Thread(
         target=_background_reserve_lesson,
-        args=[command.user_id, studio, schedule, True, polling, True],
+        args=[command.user_id, studio, schedule, polling, True],
         daemon=True
     )
     thread.start()
@@ -101,13 +101,13 @@ async def relocate_lesson(request: Request):
 
 
 def _background_reserve_lesson(
-    user_id, studio, schedule, relocate=False, polling=False, refresh=True, sleep=30
+    user_id, studio, schedule, relocate=False, polling=False, sleep=30
 ):
     with Client() as client:
         try:
             success, lesson = client.reserve_lesson(
                 studio, schedule, relocate=relocate,
-                polling=polling, refresh=refresh, sleep=sleep)
+                polling=polling, sleep=sleep)
             pref = 'reservation success!\n' if success else 'reservation failed\n'
             incoming_webhook(user_id, lesson.text(prefix=pref))
         except Exception as e:
