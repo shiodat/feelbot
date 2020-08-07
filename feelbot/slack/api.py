@@ -65,9 +65,10 @@ async def reserve_lesson(request: Request):
     if command.command != '/reserve':
         raise ValueError('endpoint does not match')
     studio, schedule, polling = _parse_parameters(command.text.split())
+    relocate = False
     thread = Thread(
         target=_background_reserve_lesson,
-        args=[command.user_id, studio, schedule, False, pooling],
+        args=[command.user_id, studio, schedule, relocate, polling],
         daemon=True
     )
     thread.start()
@@ -88,9 +89,10 @@ async def relocate_lesson(request: Request):
     if command.command != '/relocate':
         raise ValueError('endpoint does not match')
     studio, schedule, polling = _parse_parameters(command.text.split())
+    relocate = True
     thread = Thread(
         target=_background_reserve_lesson,
-        args=[command.user_id, studio, schedule, True, polling],
+        args=[command.user_id, studio, schedule, relocate, polling],
         daemon=True
     )
     thread.start()
