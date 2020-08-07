@@ -192,8 +192,11 @@ def get_driver() -> WebDriver:
 
 class Client(object):
 
+    MAX_RETRY = 10
+
     def __init__(self):
         self.driver = get_driver()
+        self.count = 0
         load_dotenv(verbose=True)
 
     def __enter__(self):
@@ -201,6 +204,15 @@ class Client(object):
 
     def __exit__(self, ex_type, ex_value, trace):
         self.driver.quit()
+
+    def _refresh_driver(self):
+        if self.count > self.MAX_RETRY:
+            self.count = 0
+            self.driver.quit()
+            time.sleep(5)
+            self.driver = get_driver()
+        else:
+            self.count += 1
 
     def is_login(self) -> bool:
         return is_login(self.driver)
@@ -237,6 +249,7 @@ class Client(object):
 
         if polling:
             while True:
+                self._refresh_driver()
                 try:
                     lesson = _find()
                 except TimeoutException:
@@ -272,6 +285,7 @@ class Client(object):
 
         if polling:
             while True:
+                self._refresh_driver()
                 try:
                     success, lesson = _reserve()
                 except TimeoutException:

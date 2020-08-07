@@ -67,7 +67,7 @@ async def reserve_lesson(request: Request):
     studio, schedule, polling = _parse_parameters(command.text.split())
     thread = Thread(
         target=_background_reserve_lesson,
-        args=[command.user_id, studio, schedule, polling, True],
+        args=[command.user_id, studio, schedule, False, pooling],
         daemon=True
     )
     thread.start()
@@ -90,7 +90,7 @@ async def relocate_lesson(request: Request):
     studio, schedule, polling = _parse_parameters(command.text.split())
     thread = Thread(
         target=_background_reserve_lesson,
-        args=[command.user_id, studio, schedule, polling, True],
+        args=[command.user_id, studio, schedule, True, polling],
         daemon=True
     )
     thread.start()
