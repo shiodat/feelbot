@@ -256,7 +256,7 @@ class Client(object):
                     logger.info('timeout error, retry')
                     continue
                 if lesson.status == Reservation.FULL:
-                    time.sleep(random.randint(sleep*0.5, sleep*1.5))
+                    time.sleep(random.randint(int(sleep*0.5), int(sleep*1.5)))
                 else:
                     return lesson
         else:
@@ -294,7 +294,7 @@ class Client(object):
                 if lesson is None:
                     return False, None
                 elif lesson.status == Reservation.FULL:
-                    time.sleep(random.randint(sleep*0.5, sleep*1.5))
+                    time.sleep(random.randint(int(sleep*0.5), int(sleep*1.5)))
                 else:
                     return success, lesson
         else:
