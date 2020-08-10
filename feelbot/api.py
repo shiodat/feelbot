@@ -41,7 +41,7 @@ async def reserve_lesson(
 
 
 @app.post('/relocate', response_model=Lesson)
-async def reserve_lesson(
+async def relocate_lesson(
     studio: str,
     schedule: datetime,
     polling: bool = False,
@@ -51,7 +51,7 @@ async def reserve_lesson(
         success, lesson = client.reserve_lesson(
             studio, schedule, relocate=True, polling=polling, sleep=int(sleep))
 
-    pref = 'reservation success!\n' if success else 'reservation failed\n'
+    pref = 'relocation success!\n' if success else 'relocation failed\n'
     incoming_webhook(lesson.text(prefix=pref))
     return lesson
 
