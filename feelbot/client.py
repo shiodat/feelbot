@@ -293,7 +293,8 @@ class Client(object):
                     continue
                 if lesson is None:
                     return False, None
-                elif lesson.status == Reservation.FULL:
+                elif (relocate is False and lesson.status == Reservation.FULL) or \
+                     (relocate is True  and success is False):
                     time.sleep(random.randint(int(sleep*0.5), int(sleep*1.5)))
                 else:
                     return success, lesson
