@@ -1,10 +1,10 @@
 from datetime import datetime
+from typing import List
 
 from fastapi import FastAPI
 
 from .client import Client
 from .models import Lesson
-from loguru import logger
 
 
 app = FastAPI()
@@ -18,9 +18,8 @@ async def find_lesson(
     sleep: int = 30
 ):
     with Client() as client:
-        lesson = client.find_lesson(studio, schedule, polling=polling, sleep=int(sleep))
-    pref='lesson information\n'
-    incoming_webhook(lesson.text(prefix=pref))
+        lesson = client.find_lesson(
+            studio, schedule, polling=polling, sleep=int(sleep))
     return lesson
 
 
@@ -35,8 +34,6 @@ async def reserve_lesson(
         success, lesson = client.reserve_lesson(
             studio, schedule, relocate=False, polling=polling, sleep=int(sleep))
 
-    pref = 'reservation success!\n' if success else 'reservation failed\n'
-    incoming_webhook(lesson.text(prefix=pref))
     return lesson
 
 
@@ -50,14 +47,14 @@ async def relocate_lesson(
     with Client() as client:
         success, lesson = client.reserve_lesson(
             studio, schedule, relocate=True, polling=polling, sleep=int(sleep))
-
-    pref = 'relocation success!\n' if success else 'relocation failed\n'
-    incoming_webhook(lesson.text(prefix=pref))
     return lesson
 
 
-def incoming_webhook(message):
-    logger.info('webhook response\n' + message)
-    requests.post(
-        os.environ.get('FEELCYCLE_BOT_INCOMING_WEBHOOK'),
-        data=json.dumps({'text': message}).encode('utf-8'))
+@app.post('/scrape', response_model=List[Lesson])
+async def scrape_lessons(
+    studios: List[str],
+    start_date: datetime,
+):
+    with Client() as client:
+        lessons = client.scrape_lessons(studios, start_date)
+    return lessons

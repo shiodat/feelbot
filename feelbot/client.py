@@ -4,7 +4,7 @@ import time
 
 from datetime import datetime
 from datetime import timedelta
-from typing import Optional, Union, Tuple
+from typing import Optional, Union, Tuple, List
 
 from dotenv import load_dotenv
 from loguru import logger
@@ -71,7 +71,7 @@ def login(
 def select_studio(
     driver: WebDriver,
     studio: str
-) -> bool:
+) -> None:
     if not is_login(driver):
         raise NotLoginError()
 
@@ -85,8 +85,8 @@ def select_studio(
         name = name.replace(' ', '').replace('　', '')
         if name == studio:
             selector.select_by_value(option.get_attribute('value'))
-            return True
-    return False
+            return
+    raise StudioSelectionError()
 
 
 def find_lesson(
@@ -99,6 +99,7 @@ def find_lesson(
         raise NotLoginError()
 
     driver.get(RESERVE_URL)
+    select_studio(driver, studio)
     for _ in range(3):
         for div in driver.find_elements_by_tag_name('div'):
             if div.get_attribute('id') not in ('day_', 'day__b'):
@@ -180,6 +181,66 @@ def reserve_lesson(
     return success, lesson
 
 
+def scrape_studio_lessons(
+    driver: WebDriver,
+    studio: str,
+    start_date: datetime
+) -> List[Lesson]:
+    if not is_login(driver):
+        raise NotLoginError()
+
+    driver.get(RESERVE_URL)
+    select_studio(driver, studio)
+
+    lessons = []
+    while True:
+        week_date = driver.find_element_by_id('week') \
+                          .find_element_by_name('setdate') \
+                          .get_attribute('value')
+        week_date = datetime.strptime(week_date, '%Y/%m/%d')
+        if week_date < start_date:
+            break
+
+        for div in driver.find_elements_by_tag_name('div'):
+            if div.get_attribute('id') not in ('day_', 'day__b'):
+                continue
+            lesson_date =\
+                div.find_element_by_tag_name('div').text.split('(')[0]
+            lesson_datetime = convert_datetime(lesson_date, clock=None)
+
+            lesson_elements = div.find_elements_by_class_name('unit_reserved')
+
+            for lesson_element in lesson_elements:
+                contents = lesson_element.find_elements_by_tag_name('p')
+                start_time = contents[0].text.split('～')[0]
+                lesson_datetime =\
+                    convert_datetime(lesson_date, clock=start_time)
+                program = contents[1].text
+                instructor = contents[2].text
+                lesson = Lesson(schedule=lesson_datetime,
+                                studio=studio,
+                                program=program,
+                                instructor=instructor,
+                                status=Reservation.RESERVED)
+                lessons.append(lesson)
+                logger.info(lesson.json())
+        driver.find_element_by_id('week') \
+              .find_elements_by_tag_name('a')[0].click()
+    lessons = sorted(lessons, key=lambda lesson: lesson.schedule)
+    return lessons
+
+
+def scrape_lessons(
+    driver: WebDriver,
+    studios: List[str],
+    start_date: datetime
+) -> List[Lesson]:
+    lessons = sum([scrape_studio_lessons(driver, studio, start_date)
+                  for studio in studios], [])
+    lessons = sorted(lessons, key=lambda lesson: lesson.schedule)
+    return lessons
+
+
 def get_driver() -> WebDriver:
     options = webdriver.ChromeOptions()
     options.add_argument('--headless')
@@ -228,9 +289,7 @@ class Client(object):
 
     def select_studio(self, studio: str) -> None:
         self.login()
-        success = select_studio(self.driver, studio)
-        if not success:
-            StudioSelectionError()
+        select_studio(self.driver, studio)
 
     def find_lesson(
         self,
@@ -241,7 +300,6 @@ class Client(object):
     ) -> Lesson:
         def _find():
             self.login()
-            self.select_studio(studio)
             lesson = find_lesson(self.driver, studio, schedule, False)
             if lesson is None:
                 raise LessonNotFoundError()
@@ -272,7 +330,6 @@ class Client(object):
     ) -> Tuple[bool, Optional[Lesson]]:
         def _reserve():
             self.login()
-            self.select_studio(studio)
             success, lesson = reserve_lesson(
                 self.driver, studio, schedule, relocate=relocate)
             if lesson is None:
@@ -294,9 +351,18 @@ class Client(object):
                 if lesson is None:
                     return False, None
                 elif (relocate is False and lesson.status == Reservation.FULL) or \
-                     (relocate is True  and success is False):
+                     (relocate is True and success is False):
                     time.sleep(random.randint(int(sleep*0.5), int(sleep*1.5)))
                 else:
                     return success, lesson
         else:
             return _reserve()
+
+    def scrape_lessons(
+        self,
+        studios: List[str],
+        start_date: datetime,
+    ) -> List[Lesson]:
+        self.login()
+        lessons = scrape_lessons(self.driver, studios, start_date)
+        return lessons
