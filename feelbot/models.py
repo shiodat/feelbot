@@ -30,11 +30,12 @@ class Lesson(BaseModel):
 
     @staticmethod
     def csv_header():
-        return 'datetime,studio,program,instructor'
+        return 'datetime,studio,category,program,instructor'
 
     def csv_row(self):
+        category = self.program.split()[0]
         msg = f'{self.schedule.strftime("%m/%d %H:%M")},' \
-              f'{self.studio},{self.program},{self.instructor}'
+              f'{self.studio},{category},{self.program},{self.instructor}'
         return msg
 
 
