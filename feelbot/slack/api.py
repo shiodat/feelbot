@@ -1,6 +1,8 @@
 import json
 import os
+from datetime import datetime
 from threading import Thread
+from typing import List
 
 import requests
 from dotenv import load_dotenv
@@ -10,7 +12,9 @@ from loguru import logger
 from .verification import verify_signature, verify_timestamp
 from .models import SlackCommand
 from ..client import Client
+from ..models import lessons2csv
 from ..utils import convert_datetime
+
 
 app = FastAPI()
 load_dotenv(verbose=True)
@@ -40,7 +44,11 @@ async def find_lesson(request: Request):
 
 
 def _background_find_lesson(
-    user_id, studio, schedule, polling=False, sleep=30
+    user_id: str,
+    studio: str,
+    schedule: datetime,
+    polling: bool = False,
+    sleep: int = 30
 ):
     with Client() as client:
         try:
@@ -103,7 +111,12 @@ async def relocate_lesson(request: Request):
 
 
 def _background_reserve_lesson(
-    user_id, studio, schedule, relocate=False, polling=False, sleep=30
+    user_id: str,
+    studio: str,
+    schedule: datetime,
+    relocate: bool = False,
+    polling: bool = False,
+    sleep: int = 30
 ):
     with Client() as client:
         try:
@@ -136,9 +149,62 @@ def _parse_parameters(parameters):
     return studio, schedule, polling, sleep
 
 
+@app.post(
+    '/scrape',
+    response_model=str,
+    dependencies=[Depends(verify_signature), Depends(verify_timestamp)]
+)
+async def scrape_lessons(request: Request):
+    form = await request.form()
+    command = SlackCommand(**form)
+    if command.command != '/find':
+        raise ValueError('endpoint does not match')
+    start_date, lessons = command.text.split()
+    start_date = convert_datetime(start_date)
+    lessons = lessons.split(',')
+    studio, schedule, polling, sleep = _parse_parameters(command.text.split())
+    thread = Thread(
+        target=_background_scrape_lessons,
+        args=[command.user_id, studio, schedule, polling, sleep],
+        daemon=True
+    )
+    thread.start()
+    return 'scraping lessons, please wait'
+
+
+def _background_scrape_lessons(
+    user_id: str,
+    start_date: datetime,
+    lessons: List[str]
+):
+    with Client() as client:
+        try:
+            lessons = client.scrape_lessons(start_date, lessons)
+            lessons = lessons2csv(lessons)
+            file_upload(user_id, start_date, lessons)
+        except Exception as e:
+            logger.exception(f'{e}')
+            logger.exception(user_id,
+                             f'something wrong: {e.__class__.__name__}\n{e}')
+
+
 def incoming_webhook(user_id, message):
     message = f'<@{user_id}> ' + message
     logger.info('webhook response\n' + message)
     requests.post(
         os.environ.get('FEELCYCLE_BOT_INCOMING_WEBHOOK'),
         data=json.dumps({'text': message}).encode('utf-8'))
+
+
+def file_upload(user_id, start_date, content):
+    url = "https://slack.com/api/file.upload"
+    payload = {
+        'token': os.environ.get('SLACK_OAUTH_ACCESS_TOKEN'),
+        'channels': os.environ.get('SLACK_FEELBOT_CHANNEL_ID'),
+        'title': f'{user_id}_lessons_from_{start_date}.csv',
+        'content': content
+    }
+    requests.post(
+        url,
+        data=json.dumps(payload).encode('utf-8')
+    )
