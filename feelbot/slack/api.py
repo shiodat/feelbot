@@ -157,15 +157,14 @@ def _parse_parameters(parameters):
 async def scrape_lessons(request: Request):
     form = await request.form()
     command = SlackCommand(**form)
-    if command.command != '/find':
+    if command.command != '/scrape':
         raise ValueError('endpoint does not match')
     start_date, lessons = command.text.split()
     start_date = convert_datetime(start_date)
     lessons = lessons.split(',')
-    studio, schedule, polling, sleep = _parse_parameters(command.text.split())
     thread = Thread(
         target=_background_scrape_lessons,
-        args=[command.user_id, studio, schedule, polling, sleep],
+        args=[command.user_id, lessons, start_date],
         daemon=True
     )
     thread.start()
@@ -174,14 +173,16 @@ async def scrape_lessons(request: Request):
 
 def _background_scrape_lessons(
     user_id: str,
-    start_date: datetime,
-    lessons: List[str]
+    lessons: List[str],
+    start_date: datetime
 ):
     with Client() as client:
         try:
-            lessons = client.scrape_lessons(start_date, lessons)
-            lessons = lessons2csv(lessons)
-            file_upload(user_id, start_date, lessons)
+            lessons = client.scrape_lessons(lessons, start_date)
+            logger.info('Scraping finished. Try uploading a snippet.')
+            content = lessons2csv(lessons)
+            title = 'lessons.csv'
+            file_upload(user_id, title, content)
         except Exception as e:
             logger.exception(f'{e}')
             logger.exception(user_id,
@@ -196,15 +197,11 @@ def incoming_webhook(user_id, message):
         data=json.dumps({'text': message}).encode('utf-8'))
 
 
-def file_upload(user_id, start_date, content):
-    url = "https://slack.com/api/file.upload"
+def file_upload(user_id, title, content):
     payload = {
         'token': os.environ.get('SLACK_OAUTH_ACCESS_TOKEN'),
         'channels': os.environ.get('SLACK_FEELBOT_CHANNEL_ID'),
-        'title': f'{user_id}_lessons_from_{start_date}.csv',
+        'title': title,
         'content': content
     }
-    requests.post(
-        url,
-        data=json.dumps(payload).encode('utf-8')
-    )
+    requests.post("https://slack.com/api/files.upload", data=payload)
